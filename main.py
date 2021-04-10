@@ -1,0 +1,50 @@
+from PyQt5 import QtWidgets
+from tab import Tab
+
+from units.student_list import StudentList
+from units.document_list import DocumentList
+from units.team_list import TeamList
+from units.judge_list import JudgeList
+from units.protocol_list import ProtocolList
+
+import os
+import sqlite3
+from itertools import starmap
+
+
+class Main(Tab):
+    def __init__(self):
+        super().__init__()
+        self.validate_run()
+
+        self.db_connection = sqlite3.connect('data.db')
+        self.cur = self.db_connection.cursor()
+
+        tabs = (
+            (StudentList(self.db_connection, self.cur),                  'Участники'),
+            (DocumentList(),                                             'Документы'),
+            (TeamList(self.db_connection, self.cur),                       'Команды'),
+            (JudgeList(self.db_connection, self.cur),                        'Судьи'),
+            (ProtocolList(self.db_connection, self.cur),    'Протоколы соревнований')
+
+        )
+
+        self.tab_widget = QtWidgets.QTabWidget()
+        tuple(starmap(self.tab_widget.addTab, tabs))
+
+        self.main_layout.addWidget(self.tab_widget)
+
+    def validate_run(self):
+        if not os.path.exists('data.db'):
+            QtWidgets.QMessageBox.critical(self, 'Ошибка', 'База данных (файл data.db) не найдена!')
+            exit(0)
+
+
+if __name__ == '__main__':
+    import sys
+
+    app = QtWidgets.QApplication(sys.argv)
+    window = Main()
+    window.setWindowTitle('Физ-ра')
+    window.showMaximized()
+    sys.exit(app.exec_())
