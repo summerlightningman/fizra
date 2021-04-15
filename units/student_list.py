@@ -1,20 +1,18 @@
 import datetime
 import sqlite3
 
-from PyQt5 import QtWidgets, QtGui, QtSql
+from PyQt5 import QtWidgets, QtGui, QtSql, QtCore
 from functools import reduce, partial
 
 from tab import Tab
-from static import GENDERS, GRADES
+from static import GENDERS, STUDENT_GRADES
 from widgets.combobox import ComboBox
-from widgets.student_combobox import StudentComboBox
-from widgets.delete_button import DeleteButton
+from widgets.table_item import TableItem
 
 
 class StudentList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
-        self.TABLE_HEADERS = (
-            '#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Тренер', 'Время забега', 'Разряд', 'Удалить')
+        self.TABLE_HEADERS = ('#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Разряд', 'Тренер')
 
         super().__init__()
 
@@ -24,7 +22,9 @@ class StudentList(Tab):
 
         self.table = QtWidgets.QTableWidget(0, len(self.TABLE_HEADERS), self)
         self.table.setHorizontalHeaderLabels(self.TABLE_HEADERS)
-        self.table.cellChanged.connect(self.edit_text_student_data)
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.table.verticalHeader().hide()
 
         self.gender_dropdown = QtWidgets.QComboBox()
         self.gender_dropdown.addItems(('Все',) + GENDERS)
@@ -63,20 +63,15 @@ class StudentList(Tab):
         self.new_organization.setStyleSheet('')
 
         self.new_grade = QtWidgets.QComboBox()
-        self.new_grade.addItems(GRADES)
+        self.new_grade.addItems(STUDENT_GRADES)
 
         self.add_button = QtWidgets.QPushButton('Добавить')
         self.add_button.clicked.connect(self.add_new_student)
 
         add_new_layout = QtWidgets.QHBoxLayout()
-        add_new_layout.addWidget(self.new_surname)
-        add_new_layout.addWidget(self.new_name)
-        add_new_layout.addWidget(self.new_lastname)
-        add_new_layout.addWidget(self.new_gender)
-        add_new_layout.addWidget(self.new_born)
-        add_new_layout.addWidget(self.new_organization)
-        add_new_layout.addWidget(self.new_grade)
-        add_new_layout.addWidget(self.add_button)
+        add_widgets = (self.new_surname, self.new_name, self.new_lastname, self.new_gender, self.new_born,
+                       self.new_organization, self.new_grade, self.add_button,)
+        tuple(map(add_new_layout.addWidget, add_widgets))
 
         add_new_groupbox = QtWidgets.QGroupBox('Добавить нового участника')
         add_new_groupbox.setLayout(add_new_layout)
@@ -87,15 +82,22 @@ class StudentList(Tab):
 
         self.get_data()
 
-    def edit_text_student_data(self) -> None:
-        student_id = int(self.table.item(self.table.currentRow(), 0).text())
-        return self.edit_student_data(student_id=student_id)
-
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        headers_count = len(self.TABLE_HEADERS)
-        col_width = self.table.width() // headers_count
-        for i in range(headers_count - 1):
-            self.table.setColumnWidth(i, col_width)
+        width = self.table.width()
+        proportions = (.8, 3, 1, 2, 1, 1, 3)
+        for col, prop in enumerate(proportions):
+            self.table.setColumnWidth(col, (width * prop) // 12)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        student_id, name, *_ = map(lambda item: item.text(), self.table.selectedItems())
+        if event.key() == QtCore.Qt.Key_Delete:
+            resp = QtWidgets.QMessageBox.warning(self, 'Подтверждение удаления студента',
+                                                 f'Вы действительно желаете удалить студента {name}?',
+                                                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            if resp == QtWidgets.QMessageBox.Yes:
+                self.cur.execute('DELETE FROM student WHERE student_id = ?', (student_id,))
+                self.db_connection.commit()
+                self.refresh_data()
 
     def get_data(self) -> None:
         self.clear_table()
@@ -103,106 +105,50 @@ class StudentList(Tab):
         second_name = self.search_input.text() + '%'
         gender = '' if self.gender_dropdown.currentText() == 'Все' else self.gender_dropdown.currentText()
 
-        query = 'SELECT ' \
-                'student_id, second_name, first_name, last_name, date_of_birth, gender, t.name as team, ' \
-                'runtime, j.surname, j.name, j.lastname, grade, s.team as team_id ' \
-                'FROM students s ' \
-                'INNER JOIN teams t on s.team = t.team_id ' \
-                'INNER JOIN judges j on j.judge_id = s.judge_id'
+        query = 'SELECT student_id, surname, s.name, lastname, born, gender, t.name as team, grade,' \
+                's.team as team_id FROM student s INNER JOIN team t on s.team = t.team_id'
         if gender and second_name != '%':
-            query += ' WHERE gender = ? AND second_name LIKE ?'
+            query += ' WHERE gender = ? AND surname LIKE ?'
             values = (gender, second_name)
         elif gender:
             query += ' WHERE gender = ?'
             values = (gender,)
         elif second_name != '%':
-            query += ' WHERE second_name LIKE ?'
+            query += ' WHERE surname LIKE ?'
             values = (second_name,)
         else:
             values = tuple()
 
         self.cur.execute(query, values)
-        for student_id, surname, name, lastname, born, gender, team, runtime, judge_surname, judge_name, \
-            judge_lastname, grade, team_id in self.cur.fetchall():
+        for student_id, surname, name, lastname, born, gender, team, grade, team_id in self.cur.fetchall():
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
 
             def add_row(col_i: int, value: str):
-                return self.table.setItem(row_idx, col_i, QtWidgets.QTableWidgetItem(value))
+                return self.table.setItem(row_idx, col_i, TableItem(value))
 
             add_row(0, str(student_id))
             add_row(1, ' '.join((surname, name, lastname)))
+            add_row(2, gender)
+            add_row(3, team)
             add_row(4, born)
-            add_row(5, '{} {} {}'.format(judge_surname, judge_name, judge_lastname if judge_lastname else ''))
-            add_row(6, runtime)
 
-            edit_student_data = partial(self.edit_student_data, student_id=student_id)
-            gender_combobox = StudentComboBox(
-                content=GENDERS, default_text=gender, field='gender'
-            )
-            gender_combobox.setEditable(False)
-            gender_combobox.setCurrentText(gender)
-            gender_combobox.currentTextChanged.connect(edit_student_data)
-            self.table.setCellWidget(row_idx, 2, gender_combobox)
-
-            teams = self.get_teams()
-            team_combobox = StudentComboBox(
-                content=teams, default_text=team, field='team'
-            )
-            team_combobox.setEditText(team)
-            team_combobox.currentTextChanged.connect(edit_student_data)
-            self.table.setCellWidget(row_idx, 3, team_combobox)
-
-            grade_combobox = StudentComboBox(
-                content=GRADES, default_text=grade, field='grade'
-            )
+            edit_student_data = partial(self.edit_student_grade, student_id=student_id)
+            grade_combobox = ComboBox(content=STUDENT_GRADES, default_text=grade)
             grade_combobox.setEditable(False)
             grade_combobox.setCurrentText(grade)
             grade_combobox.currentTextChanged.connect(edit_student_data)
-            self.table.setCellWidget(row_idx, 7, grade_combobox)
+            self.table.setCellWidget(row_idx, 5, grade_combobox)
 
-            delete_button = DeleteButton(text='Удалить', id_=student_id)
-            delete_button.clicked.connect(self.delete_student)
-            self.table.setCellWidget(row_idx, 8, delete_button)
         self.table.blockSignals(False)
 
-    def edit_student_data(self, student_id: int = -1) -> None:
-        sender = self.sender()
-        if hasattr(sender, 'currentText'):
-            key = sender.field
-            if key == 'team':
-                (value,) = self.db_connection.execute('SELECT team_id FROM teams WHERE name = ?',
-                                                      (sender.currentText(),)).fetchone()
-            else:
-                value = sender.currentText()
-        else:
-            col = self.table.currentColumn()
-            key = self.table.horizontalHeaderItem(col).text()
-            if key in ('ФИО', '#'):
-                return
-            elif key == 'Дата рождения':
-                key = 'date_of_birth'
-            elif key == 'Время забега':
-                key = 'runtime'
-            value = self.table.currentItem().text()
-
-        self.cur.execute("UPDATE students SET {} = ? WHERE student_id = ?".format(key), (value, student_id))
+    def edit_student_grade(self, student_id: int = -1) -> None:
+        value = self.sender().currentText()
+        self.cur.execute('UPDATE student SET grade = ? WHERE student_id = ?', (value, student_id))
         self.db_connection.commit()
 
-    def delete_student(self):
-        student_id = self.sender().id
-        response = QtWidgets.QMessageBox.question(
-            self, 'Подтверждение удаления участника',
-            f'Вы действительно хотите удалить участника #{student_id}?',
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
-        )
-        if response == QtWidgets.QMessageBox.Yes:
-            self.cur.execute('DELETE FROM students WHERE student_id = ?', (student_id,))
-            self.db_connection.commit()
-            self.refresh_data()
-
     def get_teams(self) -> tuple:
-        self.cur.execute('SELECT name FROM teams')
+        self.cur.execute('SELECT name FROM team')
         return reduce(lambda acc, val: (*acc, val[0]), self.cur.fetchall())
 
     def refresh_data(self) -> None:
@@ -231,8 +177,8 @@ class StudentList(Tab):
             self.new_grade.currentText()
         )
 
-        query = 'INSERT INTO students (second_name, first_name, last_name, date_of_birth, team, gender, grade) ' \
-                'VALUES (?, ?, ?, ?, (SELECT team_id FROM teams WHERE name = ?), ?, ?)'
+        query = 'INSERT INTO student (surname, name, lastname, born, team, gender, grade) ' \
+                'VALUES (?, ?, ?, ?, (SELECT team_id FROM team WHERE name = ?), ?, ?)'
 
         self.cur.execute(query, args)
         self.db_connection.commit()

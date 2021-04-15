@@ -14,11 +14,13 @@ class JudgeList(Tab):
         self.db_connection = db_connection
         self.cur = cursor
 
-        header_labels = ('Категория', 'ФИО', 'Удалить')
+        header_labels = ('Категория', 'ФИО', 'Категория')
         self.table = QtWidgets.QTreeWidget()
         self.table.setHeaderLabels(header_labels)
-        self.table.setColumnCount(2)
-        self.table.setColumnWidth(0, 400)
+        self.table.setColumnCount(3)
+        self.table.setColumnWidth(0, 200)
+        self.table.setColumnWidth(1, 900)
+        self.table.setColumnWidth(2, 200)
         self.table.setStyleSheet('font-size: 32px')
 
         self.new_name = QtWidgets.QLineEdit()
@@ -60,37 +62,21 @@ class JudgeList(Tab):
                                                      'Вы действительно желаете удалить судью {}?'.format(name),
                                                      QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
                 if resp == QtWidgets.QMessageBox.Yes:
-                    self.cur.execute('DELETE FROM judges WHERE judge_id = ?', (item.id,))
+                    self.cur.execute('DELETE FROM judge WHERE judge_id = ?', (item.id,))
                     self.db_connection.commit()
                     self.refresh()
 
     def get_data_for_type(self, name: str, parent: QtWidgets.QTreeWidgetItem):
-        self.cur.execute('SELECT judge_id, surname, name, lastname FROM judges WHERE type IN '
-                         '(SELECT type_id FROM judge_types WHERE name = ?)', (name,))
+        self.cur.execute('SELECT judge_id, surname, name, lastname, grade FROM judge WHERE type IN '
+                         '(SELECT type_id FROM judge_type WHERE name = ?)', (name,))
 
-        for id_, surname, name, lastname in self.cur.fetchall():
-            # item = QtWidgets.QTreeWidgetItem(parent)
+        for id_, surname, name, lastname, grade in self.cur.fetchall():
             item = TreeItem(id_, parent)
             item.setText(1, f'{surname} {name} {lastname if lastname else ""}')
-            # delete_button = DeleteButton(text='Удалить', id_=id_)
-            # delete_button.clicked.connect(self.delete_judge)
-            # self.table.setItemWidget(item, 2, delete_button)
-
-    # def delete_judge(self):
-    #     judge_id = self.sender().id
-    #     response = QtWidgets.QMessageBox.question(
-    #         self, 'Подтверждение удаления участника',
-    #         f'Вы действительно хотите удалить судью #{judge_id}?',
-    #         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
-    #     )
-    #     if response == QtWidgets.QMessageBox.Yes:
-    #         judge_id = self.sender().id
-    #         self.cur.execute('DELETE FROM judges WHERE judge_id = ?', (judge_id,))
-    #         self.db_connection.commit()
-    #     self.get_data()
+            item.setText(2, grade)
 
     def get_judge_types(self) -> tuple:
-        self.cur.execute('SELECT name FROM judge_types')
+        self.cur.execute('SELECT name FROM judge_type')
         return reduce(lambda acc, val: (*acc, *val), self.cur.fetchall())
 
     def add_judge(self) -> None:
@@ -98,11 +84,11 @@ class JudgeList(Tab):
         type_ = self.new_type.currentText()
 
         if len(name) == 2:
-            query = 'INSERT INTO judges (surname, name, type) VALUES (?, ?, ' \
-                    '(SELECT type_id FROM judge_types WHERE name = ?))'
+            query = 'INSERT INTO judge (surname, name, type) VALUES (?, ?, ' \
+                    '(SELECT type_id FROM judge_type WHERE name = ?))'
         elif len(name) == 3:
-            query = 'INSERT INTO judges (surname, name, lastname, type) VALUES (?, ?, ?, (SELECT type_id FROM ' \
-                    'judge_types WHERE name = ?)) '
+            query = 'INSERT INTO judge (surname, name, lastname, type) VALUES (?, ?, ?, (SELECT type_id FROM ' \
+                    'judge_type WHERE name = ?)) '
         else:
             return
 

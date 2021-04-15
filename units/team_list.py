@@ -1,8 +1,9 @@
 import sqlite3
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from tab import Tab
-from widgets.delete_button import DeleteButton
+
+from widgets.table_item import TableItem
 from widgets.combobox import ComboBox
 
 from functools import reduce
@@ -12,14 +13,16 @@ class TeamList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 
-        self.TABLE_HEADERS = ('#', 'Наименование', 'Первенство', 'Удалить')
+        self.TABLE_HEADERS = ('#', 'Наименование', 'Первенство')
 
         self.db_connection = db_connection
         self.cur = cursor
 
         self.table = QtWidgets.QTableWidget(0, len(self.TABLE_HEADERS), self)
         self.table.setHorizontalHeaderLabels(self.TABLE_HEADERS)
-        self.table.cellChanged.connect(self.edit_team_data)
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.table.verticalHeader().hide()
 
         self.search_input = QtWidgets.QLineEdit()
         self.search_input.setPlaceholderText('Наименование команды')
@@ -58,14 +61,14 @@ class TeamList(Tab):
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         width = self.table.width()
-        self.table.setColumnWidth(0, width * 1 // 12)
-        self.table.setColumnWidth(1, width * 8 // 12)
-        self.table.setColumnWidth(2, width * 2 // 12)
+        self.table.setColumnWidth(0, (width * 1 // 12) - 20)
+        self.table.setColumnWidth(1, (width * 8 // 12) - 20)
+        self.table.setColumnWidth(2, (width * 3 // 12) - 20)
 
     def get_data(self):
         self.clear_table()
         team_name = self.search_input.text()
-        query = 'SELECT * FROM teams'
+        query = 'SELECT * FROM team'
 
         if team_name:
             query += ' WHERE name LIKE ?'
@@ -79,51 +82,38 @@ class TeamList(Tab):
             self.table.insertRow(row_idx)
 
             def add_row(col_i, value):
-                return self.table.setItem(row_idx, col_i, QtWidgets.QTableWidgetItem(value))
+                return self.table.setItem(row_idx, col_i, TableItem(value))
 
             add_row(0, str(team_id))
             add_row(1, name)
             add_row(2, points)
-
-            delete_button = DeleteButton('Удалить', team_id)
-            delete_button.clicked.connect(self.delete_team)
-            self.table.setCellWidget(row_idx, 3, delete_button)
         self.table.blockSignals(False)
 
     def clear_table(self):
         self.table.clearContents()
         self.table.setRowCount(0)
 
-    def edit_team_data(self, row, col):
-        col_labels = ('team_id', 'name', 'points')
-        team_id = self.table.item(row, 0).text()
-        value = self.table.item(row, col).text()
-
-        col_name = col_labels[col]
-        query = 'UPDATE teams SET {} = ? WHERE team_id = ?'.format(col_name)
-        args = (value, team_id)
-        self.cur.execute(query, args)
-        self.db_connection.commit()
-
-    def delete_team(self):
-        team_id = self.sender().id
-        result = QtWidgets.QMessageBox.question(
-            self, 'Подтверждение удаления команды',
-            f'Вы действительно хотите удалить команду #{team_id}?'
-        )
-        if result == 16384:
-            self.cur.execute('DELETE FROM teams WHERE team_id = ?', (team_id,))
-            self.db_connection.commit()
-            self.get_data()
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        team_id, name, _ = tuple(map(lambda item: item.text(), self.table.selectedItems()))
+        if event.key() == QtCore.Qt.Key_Delete:
+            result = QtWidgets.QMessageBox.question(
+                self, 'Подтверждение удаления команды',
+                f'Вы действительно хотите удалить команду "{name}"?',
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            )
+            if result == QtWidgets.QMessageBox.Yes:
+                self.cur.execute('DELETE FROM team WHERE team_id = ?', (team_id,))
+                self.db_connection.commit()
+                self.get_data()
 
     def get_points(self) -> tuple:
-        self.cur.execute('SELECT DISTINCT points FROM teams')
+        self.cur.execute('SELECT DISTINCT points FROM team')
         return reduce(lambda acc, val: (*acc, *val), self.cur.fetchall())
 
     def add_team(self):
         name = self.new_name.text()
         points = self.new_points.currentText()
         if name and points:
-            self.cur.execute('INSERT INTO teams (name, points) VALUES (?, ?)', (name, points))
+            self.cur.execute('INSERT INTO team (name, points) VALUES (?, ?)', (name, points))
             self.db_connection.commit()
             self.get_data()

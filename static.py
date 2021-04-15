@@ -1,6 +1,6 @@
 import os
 
-GRADES = (
+STUDENT_GRADES = (
     "б/р",
     "III(ю)",
     "II(ю)",
@@ -13,9 +13,9 @@ GRADES = (
     "МСМК"
 )
 
-GENDERS = ('Мужской', 'Женский')
+JUDGE_GRADES = ('ССВК', 'СС1К', 'СС2К')
 
-# DATE_PATTERN = r'(\d?\d)[.;\s:-_/](\d?\d)[.;\s:-_/](\d?\d?\d\d)'
+GENDERS = ('Мужской', 'Женский')
 
 DOCUMENTS_PATH = os.path.join(os.path.abspath(os.curdir), 'documents')
 

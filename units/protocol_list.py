@@ -7,6 +7,7 @@ from tab import Tab
 
 from static import PROTOCOLS, DOCUMENTS_PATH
 
+
 class ProtocolList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
@@ -44,5 +45,4 @@ class ProtocolList(Tab):
 
     def generate_protocol(self):
         url = QtCore.QUrl('file:///' + DOCUMENTS_PATH.replace('\\', '/') + '/index.html')
-        print(url)
         self.view.setUrl(url)

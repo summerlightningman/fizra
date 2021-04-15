@@ -40,18 +40,18 @@ class CategoryList(Tab):
                                                  buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
             if resp == QtWidgets.QMessageBox.Yes:
                 name = self.category_list.selectedItems()[0].text()
-                self.cur.execute('DELETE FROM judge_types WHERE name = ?', (name,))
+                self.cur.execute('DELETE FROM judge_type WHERE name = ?', (name,))
                 self.db_connection.commit()
                 self.refresh_list()
 
     def add_category(self):
         name = self.new_name.text()
-        self.cur.execute('INSERT INTO judge_types (name) VALUES (?)', (name,))
+        self.cur.execute('INSERT INTO judge_type (name) VALUES (?)', (name,))
         self.db_connection.commit()
         self.refresh_list()
         self.new_name.clear()
 
     def refresh_list(self) -> None:
         self.category_list.clear()
-        self.cur.execute('SELECT name FROM judge_types')
+        self.cur.execute('SELECT name FROM judge_type')
         tuple(QtWidgets.QListWidgetItem(category, self.category_list) for (category,) in self.cur.fetchall())
