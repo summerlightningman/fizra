@@ -5,14 +5,15 @@ import re
 from PyQt5 import QtWidgets, QtGui, QtSql, QtCore
 from functools import reduce, partial
 
-from tab import Tab
+from window import Window
 from static import GENDERS, STUDENT_GRADES, USER_PATTERN
 from widgets.combobox import ComboBox
 from widgets.table_item import TableItem
 from widgets.table import Table
+from .student_coach_window import StudentCoachWindow
 
 
-class StudentList(Tab):
+class StudentList(Window):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         table_headers = ('#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Разряд', 'Тренер')
 
@@ -23,6 +24,7 @@ class StudentList(Tab):
         self.cur = cursor
 
         self.table = Table(headers=table_headers, parent=self)
+        self.table.itemDoubleClicked.connect(self.edit_coach)
 
         self.gender_field = QtWidgets.QComboBox()
         self.gender_field.addItems(('Все',) + GENDERS)
@@ -96,6 +98,11 @@ class StudentList(Tab):
                 self.cur.execute('DELETE FROM student WHERE student_id = ?', (student_id,))
                 self.db_connection.commit()
                 self.refresh_data()
+
+    def edit_coach(self):
+        print('clicked')
+        window = StudentCoachWindow(self)
+        window.show()
 
     def refresh_list(self) -> None:
         self.clear_table()

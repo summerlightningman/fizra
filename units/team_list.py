@@ -1,7 +1,7 @@
 import sqlite3
 
 from PyQt5 import QtWidgets, QtGui, QtCore
-from tab import Tab
+from window import Window
 
 from widgets.table import Table
 from widgets.table_item import TableItem
@@ -10,7 +10,7 @@ from widgets.combobox import ComboBox
 from functools import reduce
 
 
-class TeamList(Tab):
+class TeamList(Window):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 

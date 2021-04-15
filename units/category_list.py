@@ -1,5 +1,5 @@
 import sqlite3
-from tab import Tab
+from window import Window
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
@@ -7,7 +7,7 @@ from widgets.list_item import ListItem
 from widgets.list import List
 
 
-class CategoryList(Tab):
+class CategoryList(Window):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 

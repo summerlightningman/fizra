@@ -3,13 +3,13 @@ import re
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-from tab import Tab
+from window import Window
 from widgets.list import List
 from widgets.list_item import ListItem
 from static import USER_PATTERN
 
 
-class CoachList(Tab):
+class CoachList(Window):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 

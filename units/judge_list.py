@@ -1,4 +1,4 @@
-from tab import Tab
+from window import Window
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 # from widgets.delete_button import DeleteButton
@@ -7,7 +7,7 @@ from widgets.tree_item import TreeItem
 from functools import reduce
 
 
-class JudgeList(Tab):
+class JudgeList(Window):
     def __init__(self, db_connection, cursor):
         super().__init__()
 

@@ -3,12 +3,12 @@ import os
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from tab import Tab
+from window import Window
 
 from static import PROTOCOLS, DOCUMENTS_PATH
 
 
-class ProtocolList(Tab):
+class ProtocolList(Window):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 

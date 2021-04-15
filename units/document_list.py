@@ -3,11 +3,11 @@ import os
 from PyQt5 import QtWidgets
 
 from static import DOCUMENTS_PATH
-from tab import Tab
+from window import Window
 
 from widgets.list import List
 
-class DocumentList(Tab):
+class DocumentList(Window):
     def __init__(self):
         super().__init__()
 

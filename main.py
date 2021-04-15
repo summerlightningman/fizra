@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-from tab import Tab
+from window import Window
 
 from units.student_list import StudentList
 from units.document_list import DocumentList
@@ -14,7 +14,7 @@ import sqlite3
 from itertools import starmap
 
 
-class Main(Tab):
+class Main(Window):
     def __init__(self):
         super().__init__()
         self.validate_run()
