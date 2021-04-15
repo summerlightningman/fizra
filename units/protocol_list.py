@@ -43,5 +43,6 @@ class ProtocolList(Tab):
         self.view.page().printToPdf(page, layout)
 
     def generate_protocol(self):
-
-        self.view.setUrl(QtCore.QUrl('file:///Y:/PycharmProjects/fizra/documents/index.html'))
+        url = QtCore.QUrl('file:///' + DOCUMENTS_PATH.replace('\\', '/') + '/index.html')
+        print(url)
+        self.view.setUrl(url)
