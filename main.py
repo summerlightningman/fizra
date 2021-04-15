@@ -7,6 +7,7 @@ from units.team_list import TeamList
 from units.judge_list import JudgeList
 from units.protocol_list import ProtocolList
 from units.category_list import CategoryList
+from units.coach_list import CoachList
 
 import os
 import sqlite3
@@ -23,10 +24,11 @@ class Main(Tab):
 
         tabs = (
             (StudentList(self.db_connection, self.cur),                  'Участники'),
-            (DocumentList(),                                             'Документы'),
+            (CoachList(self.db_connection, self.cur),                      'Тренера'),
             (TeamList(self.db_connection, self.cur),                       'Команды'),
             (CategoryList(self.db_connection, self.cur),                 'Категории'),
             (JudgeList(self.db_connection, self.cur),                        'Судьи'),
+            (DocumentList(),                                             'Документы'),
             (ProtocolList(self.db_connection, self.cur),    'Протоколы соревнований')
 
         )
