@@ -10,6 +10,9 @@ class DocumentList(Tab):
     def __init__(self):
         super().__init__()
 
+        if not os.path.exists(DOCUMENTS_PATH):
+            os.mkdir(DOCUMENTS_PATH)
+
         files = self.list_files()
 
         document_list = QtWidgets.QListWidget()
@@ -26,21 +29,21 @@ class DocumentList(Tab):
         self.main_layout.addWidget(document_list)
 
     @staticmethod
-    def fill_content_in_list(list_widget: QtWidgets.QListWidget, content):
+    def fill_content_in_list(list_widget: QtWidgets.QListWidget, content) -> tuple:
         list_widget.clear()
         return tuple(map(lambda file: QtWidgets.QListWidgetItem(file, list_widget), content))
 
     @staticmethod
-    def open_file(item):
+    def open_file(item: QtWidgets.QListWidgetItem):
         filename = item.text()
         filepath = os.path.join(DOCUMENTS_PATH, filename)
         return os.system(filepath)
 
     @staticmethod
-    def list_files():
+    def list_files() -> list:
         return os.listdir(DOCUMENTS_PATH)
 
-    def search_files(self, collection, list_widget):
+    def search_files(self, collection: list, list_widget: QtWidgets.QListWidget):
         query = self.sender().text()
         result = tuple(filter(lambda file: query in file, collection))
         return self.fill_content_in_list(list_widget, result)

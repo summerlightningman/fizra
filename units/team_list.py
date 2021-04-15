@@ -1,3 +1,5 @@
+import sqlite3
+
 from PyQt5 import QtWidgets, QtGui
 from tab import Tab
 from widgets.delete_button import DeleteButton
@@ -7,7 +9,7 @@ from functools import reduce
 
 
 class TeamList(Tab):
-    def __init__(self, db_connection, cursor):
+    def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 
         self.TABLE_HEADERS = ('#', 'Наименование', 'Первенство', 'Удалить')

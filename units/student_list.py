@@ -1,19 +1,20 @@
-import re
 import datetime
+import sqlite3
 
 from PyQt5 import QtWidgets, QtGui, QtSql
 from functools import reduce, partial
 
 from tab import Tab
-from static import DATE_PATTERN, GENDERS, GRADES
+from static import GENDERS, GRADES
 from widgets.combobox import ComboBox
 from widgets.student_combobox import StudentComboBox
 from widgets.delete_button import DeleteButton
 
 
 class StudentList(Tab):
-    def __init__(self, db_connection, cursor):
-        self.TABLE_HEADERS = ('#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Время забега', 'Разряд', 'Удалить')
+    def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
+        self.TABLE_HEADERS = (
+            '#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Тренер', 'Время забега', 'Разряд', 'Удалить')
 
         super().__init__()
 
@@ -40,8 +41,14 @@ class StudentList(Tab):
         search_groupbox = QtWidgets.QGroupBox('Поиск')
         search_groupbox.setLayout(search_layout)
 
+        self.new_surname = QtWidgets.QLineEdit()
+        self.new_surname.setPlaceholderText('Фамилия')
+
         self.new_name = QtWidgets.QLineEdit()
-        self.new_name.setPlaceholderText('ФИО участника')
+        self.new_name.setPlaceholderText('Имя')
+
+        self.new_lastname = QtWidgets.QLineEdit()
+        self.new_lastname.setPlaceholderText('Отчество')
 
         self.new_gender = QtWidgets.QComboBox()
         self.new_gender.addItems(GENDERS)
@@ -62,7 +69,9 @@ class StudentList(Tab):
         self.add_button.clicked.connect(self.add_new_student)
 
         add_new_layout = QtWidgets.QHBoxLayout()
+        add_new_layout.addWidget(self.new_surname)
         add_new_layout.addWidget(self.new_name)
+        add_new_layout.addWidget(self.new_lastname)
         add_new_layout.addWidget(self.new_gender)
         add_new_layout.addWidget(self.new_born)
         add_new_layout.addWidget(self.new_organization)
@@ -78,7 +87,7 @@ class StudentList(Tab):
 
         self.get_data()
 
-    def edit_text_student_data(self):
+    def edit_text_student_data(self) -> None:
         student_id = int(self.table.item(self.table.currentRow(), 0).text())
         return self.edit_student_data(student_id=student_id)
 
@@ -88,30 +97,33 @@ class StudentList(Tab):
         for i in range(headers_count - 1):
             self.table.setColumnWidth(i, col_width)
 
-    def get_data(self):
+    def get_data(self) -> None:
         self.clear_table()
         self.table.blockSignals(True)
         second_name = self.search_input.text() + '%'
         gender = '' if self.gender_dropdown.currentText() == 'Все' else self.gender_dropdown.currentText()
 
         query = 'SELECT ' \
-                'studentId, secondName, firstName, lastName, dateOfBirth, gender, t.name as team, ' \
-                'runtime, grade, s.team as team_id ' \
-                'FROM students s INNER JOIN teams t on s.team = t.team_id'
+                'student_id, second_name, first_name, last_name, date_of_birth, gender, t.name as team, ' \
+                'runtime, j.surname, j.name, j.lastname, grade, s.team as team_id ' \
+                'FROM students s ' \
+                'INNER JOIN teams t on s.team = t.team_id ' \
+                'INNER JOIN judges j on j.judge_id = s.judge_id'
         if gender and second_name != '%':
-            query += ' WHERE gender = ? AND secondName LIKE ?'
-            args = (gender, second_name)
+            query += ' WHERE gender = ? AND second_name LIKE ?'
+            values = (gender, second_name)
         elif gender:
             query += ' WHERE gender = ?'
-            args = (gender,)
+            values = (gender,)
         elif second_name != '%':
-            query += ' WHERE secondName LIKE ?'
-            args = (second_name,)
+            query += ' WHERE second_name LIKE ?'
+            values = (second_name,)
         else:
-            args = tuple()
+            values = tuple()
 
-        for student_id, surname, name, lastname, born, gender, team, runtime, grade, team_id \
-                in self.db_connection.execute(query, args):
+        self.cur.execute(query, values)
+        for student_id, surname, name, lastname, born, gender, team, runtime, judge_surname, judge_name, \
+            judge_lastname, grade, team_id in self.cur.fetchall():
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
 
@@ -121,7 +133,8 @@ class StudentList(Tab):
             add_row(0, str(student_id))
             add_row(1, ' '.join((surname, name, lastname)))
             add_row(4, born)
-            add_row(5, runtime)
+            add_row(5, '{} {} {}'.format(judge_surname, judge_name, judge_lastname if judge_lastname else ''))
+            add_row(6, runtime)
 
             edit_student_data = partial(self.edit_student_data, student_id=student_id)
             gender_combobox = StudentComboBox(
@@ -146,14 +159,14 @@ class StudentList(Tab):
             grade_combobox.setEditable(False)
             grade_combobox.setCurrentText(grade)
             grade_combobox.currentTextChanged.connect(edit_student_data)
-            self.table.setCellWidget(row_idx, 6, grade_combobox)
+            self.table.setCellWidget(row_idx, 7, grade_combobox)
 
             delete_button = DeleteButton(text='Удалить', id_=student_id)
             delete_button.clicked.connect(self.delete_student)
-            self.table.setCellWidget(row_idx, 7, delete_button)
+            self.table.setCellWidget(row_idx, 8, delete_button)
         self.table.blockSignals(False)
 
-    def edit_student_data(self, student_id: int = -1):
+    def edit_student_data(self, student_id: int = -1) -> None:
         sender = self.sender()
         if hasattr(sender, 'currentText'):
             key = sender.field
@@ -168,12 +181,12 @@ class StudentList(Tab):
             if key in ('ФИО', '#'):
                 return
             elif key == 'Дата рождения':
-                key = 'dateOfBirth'
+                key = 'date_of_birth'
             elif key == 'Время забега':
                 key = 'runtime'
             value = self.table.currentItem().text()
 
-        self.cur.execute("UPDATE students SET {} = ? WHERE studentId = ?".format(key), (value, student_id))
+        self.cur.execute("UPDATE students SET {} = ? WHERE student_id = ?".format(key), (value, student_id))
         self.db_connection.commit()
 
     def delete_student(self):
@@ -183,8 +196,8 @@ class StudentList(Tab):
             f'Вы действительно хотите удалить участника #{student_id}?',
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
         )
-        if response == 16384:
-            self.cur.execute('DELETE FROM students WHERE studentId = ?', (student_id,))
+        if response == QtWidgets.QMessageBox.Yes:
+            self.cur.execute('DELETE FROM students WHERE student_id = ?', (student_id,))
             self.db_connection.commit()
             self.refresh_data()
 
@@ -192,7 +205,7 @@ class StudentList(Tab):
         self.cur.execute('SELECT name FROM teams')
         return reduce(lambda acc, val: (*acc, val[0]), self.cur.fetchall())
 
-    def refresh_data(self):
+    def refresh_data(self) -> None:
         self.clear_table()
         self.get_data()
         self.new_organization.clear()
@@ -205,30 +218,21 @@ class StudentList(Tab):
         self.table.setRowCount(0)
 
     def add_new_student(self):
-        name_args = self.new_name.text().strip().split(' ')
-        if len(name_args) == 2:
-            name_args.append('')
-
-        [(day, month, year)] = re.findall(DATE_PATTERN, self.new_born.text())
-
-        if len(year) == 2:
-            curr_year = datetime.datetime.now().year
-            year = ('19' + year) if int('20' + year) > curr_year else (20 + year)
-        gender = self.new_gender.currentText()[0]
+        surname, name, lastname = self.new_surname.text(), self.new_name.text(), self.new_lastname.text()
+        born = self.new_born.text()
+        pattern = '%d.%m.%.y' if len(born) == 8 else '%d.%m.%Y'
+        gender = self.new_gender.currentText()
 
         args = (
-            *name_args,
-            '{}.{}.{}'.format(
-                day if len(day) == 2 else ('0' + day),
-                month if len(day) == 2 else ('0' + day),
-                year
-            ),
+            surname, name, lastname,
+            datetime.datetime.strptime(born, pattern).strftime('%d.%m.%Y'),
             self.new_organization.currentText(),
             gender,
             self.new_grade.currentText()
         )
-        query = 'INSERT INTO students (secondName, firstName, lastName, dateOfBirth, team, gender, grade) ' \
-                'VALUES (?, ?, ?, ?, ?, ?, ?)'
+
+        query = 'INSERT INTO students (second_name, first_name, last_name, date_of_birth, team, gender, grade) ' \
+                'VALUES (?, ?, ?, ?, (SELECT team_id FROM teams WHERE name = ?), ?, ?)'
 
         self.cur.execute(query, args)
         self.db_connection.commit()

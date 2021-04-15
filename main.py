@@ -6,6 +6,7 @@ from units.document_list import DocumentList
 from units.team_list import TeamList
 from units.judge_list import JudgeList
 from units.protocol_list import ProtocolList
+from units.category_list import CategoryList
 
 import os
 import sqlite3
@@ -24,6 +25,7 @@ class Main(Tab):
             (StudentList(self.db_connection, self.cur),                  'Участники'),
             (DocumentList(),                                             'Документы'),
             (TeamList(self.db_connection, self.cur),                       'Команды'),
+            (CategoryList(self.db_connection, self.cur),                 'Категории'),
             (JudgeList(self.db_connection, self.cur),                        'Судьи'),
             (ProtocolList(self.db_connection, self.cur),    'Протоколы соревнований')
 
