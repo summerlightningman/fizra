@@ -1,8 +1,9 @@
 import sqlite3
-from PyQt5 import QtWidgets, QtGui
+
+from PyQt5 import QtGui
 
 from tab import Tab
-
+from widgets.list import List
 from widgets.list_item import ListItem
 
 
@@ -13,15 +14,10 @@ class CoachList(Tab):
         self.db_connection = db_connection
         self.cur = cursor
 
-        self.coach_list = QtWidgets.QListWidget()
-        self.coach_list.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.coach_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.coach_list = List(self)
         self.refresh_list()
 
         self.main_layout.addWidget(self.coach_list)
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        pass
 
     def refresh_list(self):
         self.coach_list.clear()

@@ -4,6 +4,7 @@ from tab import Tab
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from widgets.list_item import ListItem
+from widgets.list import List
 
 
 class CategoryList(Tab):
@@ -13,8 +14,7 @@ class CategoryList(Tab):
         self.db_connection = db_connection
         self.cur = cursor
 
-        self.category_list = QtWidgets.QListWidget()
-        self.category_list.setStyleSheet('font-size: 32px')
+        self.category_list = List(self)
         self.refresh_list()
 
         self.new_name = QtWidgets.QLineEdit()

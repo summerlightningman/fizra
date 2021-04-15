@@ -5,6 +5,7 @@ from PyQt5 import QtWidgets
 from static import DOCUMENTS_PATH
 from tab import Tab
 
+from widgets.list import List
 
 class DocumentList(Tab):
     def __init__(self):
@@ -15,8 +16,7 @@ class DocumentList(Tab):
 
         files = self.list_files()
 
-        document_list = QtWidgets.QListWidget()
-        document_list.setStyleSheet('font-size: 32px;')
+        document_list = List(self)
         self.fill_content_in_list(document_list, files)
         document_list.itemDoubleClicked.connect(self.open_file)
 
