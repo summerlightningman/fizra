@@ -18,7 +18,7 @@ class CoachList(Tab):
 
         self.search_field = QtWidgets.QLineEdit()
         self.search_field.setPlaceholderText('Поиск по ФИО...')
-        self.search_field.returnPressed.connect(self.search)
+        self.search_field.returnPressed.connect(self.refresh_list)
 
         search_layout = QtWidgets.QHBoxLayout()
         search_layout.addWidget(self.search_field)
@@ -29,13 +29,43 @@ class CoachList(Tab):
         self.coach_list = List(self)
         self.refresh_list()
 
+        self.new_surname = QtWidgets.QLineEdit()
+        self.new_surname.setPlaceholderText('Фамилия')
+
+        self.new_name = QtWidgets.QLineEdit()
+        self.new_name.setPlaceholderText('Имя')
+
+        self.new_lastname = QtWidgets.QLineEdit()
+        self.new_lastname.setPlaceholderText('Отчество')
+
+        add_button = QtWidgets.QPushButton('Добавить')
+        add_button.clicked.connect(self.add)
+
+        new_layout = QtWidgets.QHBoxLayout()
+        new_widgets = (self.new_surname, self.new_name, self.new_lastname, add_button)
+        tuple(map(new_layout.addWidget, new_widgets))
+
+        new_group = QtWidgets.QGroupBox('Добавить нового тренера')
+        new_group.setLayout(new_layout)
+
         self.main_layout.addWidget(search_group)
         self.main_layout.addWidget(self.coach_list)
+        self.main_layout.addWidget(new_group)
 
     def refresh_list(self):
         self.coach_list.clear()
-        self.cur.execute('SELECT * FROM coach')
-        tuple(ListItem(self.coach_list, f'{surname} {name} {lastname}', id_) for id_, surname, name, lastname in self.cur.fetchall())
+        query = 'SELECT * FROM coach'
+        if text := self.search_field.text():
+            [item] = re.findall(USER_PATTERN, text)
+            args = tuple(map(lambda s: '%' + s + '%', item))
+            self.cur.execute(query + ' WHERE surname LIKE ? AND name LIKE ? AND lastname LIKE ?', args)
+        else:
+            self.cur.execute(query)
+
+        tuple(map(lambda cols: self.parse(*cols), self.cur.fetchall()))
+
+    def parse(self, id_: int, surname: str, name: str, lastname: str) -> ListItem:
+        return ListItem(self.coach_list, f'{surname} {name} {lastname}', id_)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key_Delete:
@@ -51,10 +81,11 @@ class CoachList(Tab):
                 self.db_connection.commit()
                 self.refresh_list()
 
-    def search(self):
-        self.coach_list.clear()
-        [item] = re.findall(USER_PATTERN, self.search_field.text())
-        args = tuple(map(lambda s: '%' + s + '%', item))
-        self.cur.execute('SELECT * FROM coach WHERE surname LIKE ? AND name LIKE ? AND lastname LIKE ?', args)
-        tuple(ListItem(self.coach_list, f'{surname} {name} {lastname}', id_) for id_, surname, name, lastname in
-              self.cur.fetchall())
+    def add(self):
+        surname = self.new_surname.text()
+        name = self.new_name.text()
+        lastname = self.new_lastname.text()
+
+        self.cur.execute('INSERT INTO coach (surname, name, lastname) VALUES (?, ?, ?)', (surname, name, lastname))
+        self.db_connection.commit()
+        self.refresh_list()
