@@ -57,7 +57,7 @@ class CoachList(Tab):
         query = 'SELECT * FROM coach'
         if text := self.search_field.text():
             [item] = re.findall(USER_PATTERN, text)
-            args = tuple(map(lambda s: '%' + s + '%', item))
+            args = tuple(map(lambda s: s.replace('.', '') + '%', item))
             self.cur.execute(query + ' WHERE surname LIKE ? AND name LIKE ? AND lastname LIKE ?', args)
         else:
             self.cur.execute(query)

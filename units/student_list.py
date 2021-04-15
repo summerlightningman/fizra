@@ -1,11 +1,12 @@
 import datetime
 import sqlite3
+import re
 
 from PyQt5 import QtWidgets, QtGui, QtSql, QtCore
 from functools import reduce, partial
 
 from tab import Tab
-from static import GENDERS, STUDENT_GRADES
+from static import GENDERS, STUDENT_GRADES, USER_PATTERN
 from widgets.combobox import ComboBox
 from widgets.table_item import TableItem
 from widgets.table import Table
@@ -23,17 +24,17 @@ class StudentList(Tab):
 
         self.table = Table(headers=table_headers, parent=self)
 
-        self.gender_dropdown = QtWidgets.QComboBox()
-        self.gender_dropdown.addItems(('Все',) + GENDERS)
-        self.gender_dropdown.currentTextChanged.connect(self.refresh_data)
+        self.gender_field = QtWidgets.QComboBox()
+        self.gender_field.addItems(('Все',) + GENDERS)
+        self.gender_field.currentTextChanged.connect(self.refresh_data)
 
-        self.search_input = QtWidgets.QLineEdit()
-        self.search_input.setPlaceholderText('ФИО участника')
-        self.search_input.returnPressed.connect(self.get_data)
+        self.search_field = QtWidgets.QLineEdit()
+        self.search_field.setPlaceholderText('ФИО участника')
+        self.search_field.returnPressed.connect(self.refresh_list)
 
         search_layout = QtWidgets.QHBoxLayout()
-        search_layout.addWidget(self.search_input)
-        search_layout.addWidget(self.gender_dropdown)
+        search_layout.addWidget(self.search_field)
+        search_layout.addWidget(self.gender_field)
 
         search_groupbox = QtWidgets.QGroupBox('Поиск')
         search_groupbox.setLayout(search_layout)
@@ -67,7 +68,7 @@ class StudentList(Tab):
 
         add_new_layout = QtWidgets.QHBoxLayout()
         add_widgets = (self.new_surname, self.new_name, self.new_lastname, self.new_gender, self.new_born,
-                       self.new_organization, self.new_grade, self.add_button,)
+                       self.new_organization, self.new_grade, self.add_button)
         tuple(map(add_new_layout.addWidget, add_widgets))
 
         add_new_groupbox = QtWidgets.QGroupBox('Добавить нового участника')
@@ -77,7 +78,7 @@ class StudentList(Tab):
         self.main_layout.addWidget(self.table)
         self.main_layout.addWidget(add_new_groupbox)
 
-        self.get_data()
+        self.refresh_list()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         width = self.table.width()
@@ -96,27 +97,29 @@ class StudentList(Tab):
                 self.db_connection.commit()
                 self.refresh_data()
 
-    def get_data(self) -> None:
+    def refresh_list(self) -> None:
         self.clear_table()
-        self.table.blockSignals(True)
-        second_name = self.search_input.text() + '%'
-        gender = '' if self.gender_dropdown.currentText() == 'Все' else self.gender_dropdown.currentText()
 
-        query = 'SELECT student_id, surname, s.name, lastname, born, gender, t.name as team, grade,' \
-                's.team as team_id FROM student s INNER JOIN team t on s.team = t.team_id'
-        if gender and second_name != '%':
-            query += ' WHERE gender = ? AND surname LIKE ?'
-            values = (gender, second_name)
-        elif gender:
-            query += ' WHERE gender = ?'
-            values = (gender,)
-        elif second_name != '%':
-            query += ' WHERE surname LIKE ?'
-            values = (second_name,)
+        query = 'SELECT * FROM student'
+
+        conditions = list()
+        if text := self.search_field.text():
+            [item] = re.findall(USER_PATTERN, text)
+            args = tuple(map(lambda s: s.replace('.', '') + '%', item))
+            condition = 'surname LIKE ? AND name LIKE ? AND lastname LIKE ?'
+            conditions.append((condition, args))
+
+        if self.gender_field.currentText() != 'Все':
+            args = (self.gender_field.currentText(),)
+            condition = 'gender = ?'
+            conditions.append((condition, args))
+
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(map(lambda i: i[0], conditions))
+            values = reduce(lambda acc, val: (*acc, *val[1]), conditions, tuple())
+            self.cur.execute(query, values)
         else:
-            values = tuple()
-
-        self.cur.execute(query, values)
+            self.cur.execute(query)
         for student_id, surname, name, lastname, born, gender, team, grade, team_id in self.cur.fetchall():
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
@@ -150,11 +153,9 @@ class StudentList(Tab):
 
     def refresh_data(self) -> None:
         self.clear_table()
-        self.get_data()
         self.new_organization.clear()
         self.get_teams()
-        self.new_gender.setCurrentText(self.gender_dropdown.currentText())
-        self.search_input.clear()
+        self.new_gender.setCurrentText(self.gender_field.currentText())
 
     def clear_table(self):
         self.table.clearContents()
