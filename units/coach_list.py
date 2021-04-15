@@ -13,11 +13,12 @@ class CoachList(Tab):
         self.db_connection = db_connection
         self.cur = cursor
 
-        coach_list = QtWidgets.QListWidget()
-        coach_list.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        coach_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-
-        self.main_layout.addWidget(coach_list)
+        self.coach_list = QtWidgets.QListWidget()
+        self.coach_list.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.coach_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         pass
+
+    def refresh_list(self):
+        self.coach_list.clear()

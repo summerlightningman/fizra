@@ -3,6 +3,8 @@ from tab import Tab
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+from widgets.list_item import ListItem
+
 
 class CategoryList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
@@ -33,14 +35,16 @@ class CategoryList(Tab):
         self.main_layout.addWidget(add_group)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        item, = self.category_list.selectedItems()
+        name = item.text()
         if event.key() == QtCore.Qt.Key_Delete:
             resp = QtWidgets.QMessageBox.warning(self, 'Подтверждение удаления категории',
-                                                 'Вы действительно желаете удалить эту категорию? Все судьи и '
+                                                 f'Вы действительно желаете удалить категорию {name}? Все судьи и '
                                                  'участники, относящиеся к этой категории также будут удалены.',
                                                  buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
             if resp == QtWidgets.QMessageBox.Yes:
-                name = self.category_list.selectedItems()[0].text()
-                self.cur.execute('DELETE FROM judge_type WHERE name = ?', (name,))
+                type_id = item.id
+                self.cur.execute('DELETE FROM judge_type WHERE type_id = ?', (type_id,))
                 self.db_connection.commit()
                 self.refresh_list()
 
@@ -53,5 +57,5 @@ class CategoryList(Tab):
 
     def refresh_list(self) -> None:
         self.category_list.clear()
-        self.cur.execute('SELECT name FROM judge_type')
-        tuple(QtWidgets.QListWidgetItem(category, self.category_list) for (category,) in self.cur.fetchall())
+        self.cur.execute('SELECT * FROM judge_type')
+        tuple(ListItem(self.category_list, category, category_id) for (category_id, category,) in self.cur.fetchall())
