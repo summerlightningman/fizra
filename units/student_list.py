@@ -28,7 +28,7 @@ class StudentList(Window):
 
         self.gender_field = QtWidgets.QComboBox()
         self.gender_field.addItems(('Все',) + GENDERS)
-        self.gender_field.currentTextChanged.connect(self.refresh_data)
+        self.gender_field.currentTextChanged.connect(self.clear_window)
 
         self.search_field = QtWidgets.QLineEdit()
         self.search_field.setPlaceholderText('ФИО участника')
@@ -97,17 +97,32 @@ class StudentList(Window):
             if resp == QtWidgets.QMessageBox.Yes:
                 self.cur.execute('DELETE FROM student WHERE student_id = ?', (student_id,))
                 self.db_connection.commit()
-                self.refresh_data()
+                self.clear_window()
 
     def edit_coach(self):
-        print('clicked')
-        window = StudentCoachWindow(self)
-        window.show()
+        student_id, name = map(lambda _: _.text(), self.table.selectedItems()[:2])
+        window = StudentCoachWindow(self, (student_id, name), self.db_connection, self.cur)
+        window.exec_()
+        if window.result() == QtWidgets.QDialog.Accepted:
+            self.refresh_list()
 
     def refresh_list(self) -> None:
         self.clear_table()
 
-        query = 'SELECT * FROM student'
+        query = 'SELECT s.student_id,' \
+                's.surname,' \
+                's.name,' \
+                's.lastname,' \
+                'born,' \
+                'gender,' \
+                't.name as team,' \
+                'grade,' \
+                "GROUP_CONCAT(c.surname || ' ' || substr(c.name, 0, 2) || '.' || substr(c.lastname, 0, 2)) as coaches " \
+                'FROM student s ' \
+                'LEFT JOIN coach_student cs on s.student_id = cs.student_id ' \
+                'LEFT JOIN coach c on c.coach_id = cs.coach_id ' \
+                'INNER JOIN team t on s.team = t.team_id ' \
+                'GROUP BY s.student_id'
 
         conditions = list()
         if text := self.search_field.text():
@@ -127,7 +142,7 @@ class StudentList(Window):
             self.cur.execute(query, values)
         else:
             self.cur.execute(query)
-        for student_id, surname, name, lastname, born, gender, team, grade, team_id in self.cur.fetchall():
+        for student_id, surname, name, lastname, born, gender, team, grade, coaches in self.cur.fetchall():
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
 
@@ -139,6 +154,7 @@ class StudentList(Window):
             add_row(2, gender)
             add_row(3, team)
             add_row(4, born)
+            add_row(6, coaches)
 
             edit_student_data = partial(self.edit_student_grade, student_id=student_id)
             grade_combobox = ComboBox(content=STUDENT_GRADES, default_text=grade)
@@ -158,7 +174,7 @@ class StudentList(Window):
         self.cur.execute('SELECT name FROM team')
         return reduce(lambda acc, val: (*acc, val[0]), self.cur.fetchall())
 
-    def refresh_data(self) -> None:
+    def clear_window(self) -> None:
         self.clear_table()
         self.new_organization.clear()
         self.get_teams()
@@ -171,7 +187,7 @@ class StudentList(Window):
     def add_new_student(self):
         surname, name, lastname = self.new_surname.text(), self.new_name.text(), self.new_lastname.text()
         born = self.new_born.text()
-        pattern = '%d.%m.%.y' if len(born) == 8 else '%d.%m.%Y'
+        pattern = '%d.%m.%y' if len(born) == 8 else '%d.%m.%Y'
         gender = self.new_gender.currentText()
 
         args = (
@@ -187,4 +203,4 @@ class StudentList(Window):
 
         self.cur.execute(query, args)
         self.db_connection.commit()
-        self.refresh_data()
+        self.refresh_list()
