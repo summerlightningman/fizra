@@ -3,6 +3,7 @@ import sqlite3
 from PyQt5 import QtWidgets, QtGui, QtCore
 from tab import Tab
 
+from widgets.table import Table
 from widgets.table_item import TableItem
 from widgets.combobox import ComboBox
 
@@ -13,16 +14,12 @@ class TeamList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         super().__init__()
 
-        self.TABLE_HEADERS = ('#', 'Наименование', 'Первенство')
+        table_headers = ('#', 'Наименование', 'Первенство')
 
         self.db_connection = db_connection
         self.cur = cursor
 
-        self.table = QtWidgets.QTableWidget(0, len(self.TABLE_HEADERS), self)
-        self.table.setHorizontalHeaderLabels(self.TABLE_HEADERS)
-        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.table.verticalHeader().hide()
+        self.table = Table(headers=table_headers, parent=self)
 
         self.search_input = QtWidgets.QLineEdit()
         self.search_input.setPlaceholderText('Наименование команды')

@@ -8,11 +8,12 @@ from tab import Tab
 from static import GENDERS, STUDENT_GRADES
 from widgets.combobox import ComboBox
 from widgets.table_item import TableItem
+from widgets.table import Table
 
 
 class StudentList(Tab):
     def __init__(self, db_connection: sqlite3.Connection, cursor: sqlite3.Cursor):
-        self.TABLE_HEADERS = ('#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Разряд', 'Тренер')
+        table_headers = ('#', 'ФИО', 'Пол', 'Команда', 'Дата рождения', 'Разряд', 'Тренер')
 
         super().__init__()
 
@@ -20,11 +21,7 @@ class StudentList(Tab):
         self.db_connection = db_connection
         self.cur = cursor
 
-        self.table = QtWidgets.QTableWidget(0, len(self.TABLE_HEADERS), self)
-        self.table.setHorizontalHeaderLabels(self.TABLE_HEADERS)
-        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.table.verticalHeader().hide()
+        self.table = Table(headers=table_headers, parent=self)
 
         self.gender_dropdown = QtWidgets.QComboBox()
         self.gender_dropdown.addItems(('Все',) + GENDERS)
