@@ -86,8 +86,8 @@ class StudentList(Tab):
             self.table.setColumnWidth(col, (width * prop) // 12)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        student_id, name, *_ = map(lambda item: item.text(), self.table.selectedItems())
         if event.key() == QtCore.Qt.Key_Delete:
+            student_id, name, *_ = map(lambda item: item.text(), self.table.selectedItems())
             resp = QtWidgets.QMessageBox.warning(self, 'Подтверждение удаления студента',
                                                  f'Вы действительно желаете удалить студента {name}?',
                                                  buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)

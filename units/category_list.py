@@ -35,9 +35,9 @@ class CategoryList(Tab):
         self.main_layout.addWidget(add_group)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        item, = self.category_list.selectedItems()
-        name = item.text()
         if event.key() == QtCore.Qt.Key_Delete:
+            item, = self.category_list.selectedItems()
+            name = item.text()
             resp = QtWidgets.QMessageBox.warning(self, 'Подтверждение удаления категории',
                                                  f'Вы действительно желаете удалить категорию {name}? Все судьи и '
                                                  'участники, относящиеся к этой категории также будут удалены.',

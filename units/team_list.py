@@ -91,8 +91,8 @@ class TeamList(Tab):
         self.table.setRowCount(0)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        team_id, name, _ = tuple(map(lambda item: item.text(), self.table.selectedItems()))
         if event.key() == QtCore.Qt.Key_Delete:
+            team_id, name, _ = tuple(map(lambda item: item.text(), self.table.selectedItems()))
             result = QtWidgets.QMessageBox.question(
                 self, 'Подтверждение удаления команды',
                 f'Вы действительно хотите удалить команду "{name}"?',

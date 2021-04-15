@@ -17,6 +17,8 @@ JUDGE_GRADES = ('ССВК', 'СС1К', 'СС2К')
 
 GENDERS = ('Мужской', 'Женский')
 
+USER_PATTERN = r'(\w+)\s*(\w*\s*)\s*(\w*\s*)'
+
 DOCUMENTS_PATH = os.path.join(os.path.abspath(os.curdir), 'documents')
 
 PROTOCOLS = (
