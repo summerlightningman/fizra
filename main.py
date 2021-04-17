@@ -8,6 +8,7 @@ from units.judge_list import JudgeList
 from units.protocol_list import ProtocolList
 from units.category_list import CategoryList
 from units.coach_list import CoachList
+from units.result_list import ResultList
 
 import os
 import sqlite3
@@ -28,9 +29,9 @@ class Main(Window):
             (TeamList(self.db_connection, self.cur),                       'Команды'),
             (CategoryList(self.db_connection, self.cur),                 'Категории'),
             (JudgeList(self.db_connection, self.cur),                        'Судьи'),
-            (DocumentList(),                                             'Документы'),
-            (ProtocolList(self.db_connection, self.cur),    'Протоколы соревнований')
-
+            (ResultList(self.db_connection, self.cur),     'Результаты соревнований'),
+            (ProtocolList(self.db_connection, self.cur),    'Протоколы соревнований'),
+            (DocumentList(), 'Документы'),
         )
 
         self.tab_widget = QtWidgets.QTabWidget()

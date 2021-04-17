@@ -1,6 +1,6 @@
 import sqlite3
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
 from widgets.list_item import ListItem
 
 
@@ -61,13 +61,13 @@ class StudentCoachWindow(QtWidgets.QDialog):
         self.get_data()
 
     def get_data(self):
-        query = 'SELECT c.coach_id, c.surname, c.name, c.lastname FROM coach_student cs ' \
+        query = 'SELECT DISTINCT c.coach_id, c.surname, c.name, c.lastname FROM coach_student cs ' \
                 'INNER JOIN coach c on cs.coach_id = c.coach_id '
-        self.cur.execute(query + 'WHERE student_id != ?', (self.student_id,))
+        self.cur.execute(query + 'WHERE student_id != ? ORDER BY c.surname ASC', (self.student_id,))
         tuple(ListItem(self.all_coach_list, f'{surname} {name} {lastname}', coach_id)
               for coach_id, surname, name, lastname in self.cur.fetchall())
 
-        self.cur.execute(query + 'WHERE student_id = ?', (self.student_id,))
+        self.cur.execute(query + 'WHERE student_id = ? ORDER BY c.surname ASC', (self.student_id,))
         tuple(ListItem(self.student_coach_list, f'{surname} {name} {lastname}', coach_id)
               for coach_id, surname, name, lastname in self.cur.fetchall())
 

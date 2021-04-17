@@ -146,15 +146,15 @@ class StudentList(Window):
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
 
-            def add_row(col_i: int, value: str):
+            def set_cell(col_i: int, value: str):
                 return self.table.setItem(row_idx, col_i, TableItem(value))
 
-            add_row(0, str(student_id))
-            add_row(1, ' '.join((surname, name, lastname)))
-            add_row(2, gender)
-            add_row(3, team)
-            add_row(4, born)
-            add_row(6, coaches)
+            set_cell(0, str(student_id))
+            set_cell(1, ' '.join((surname, name, lastname)))
+            set_cell(2, gender)
+            set_cell(3, team)
+            set_cell(4, born)
+            set_cell(6, coaches)
 
             edit_student_data = partial(self.edit_student_grade, student_id=student_id)
             grade_combobox = ComboBox(content=STUDENT_GRADES, default_text=grade)
